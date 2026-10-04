@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>solana-pulse — pitch</title>
+<style>
+  :root{--bg:#0b0e14;--fg:#e6ebf5;--muted:#8892a6;--hi:#ffcf5c;--acc:#4ade80;--line:#232a3a;--panel:#131824}
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--fg);font:16px/1.55 ui-sans-serif,system-ui,Segoe UI,Roboto,sans-serif}
+  section{min-height:100vh;padding:9vh 8vw;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--line);page-break-after:always}
+  h1{font-size:44px;letter-spacing:-.5px;margin-bottom:8px}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:2px;color:var(--hi);margin-bottom:18px;font-weight:600}
+  p,li{font-size:19px;color:var(--fg)}
+  .muted{color:var(--muted)}
+  ul{margin:10px 0 0 22px}
+  li{margin:7px 0}
+  .tag{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;color:var(--muted);margin:4px 6px 0 0}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:22px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  code{background:#0f1420;border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:15px;color:var(--acc)}
+  .lead{font-size:22px;color:var(--fg);max-width:60ch}
+  .kw{color:var(--acc)}
+</style>
+</head>
+<body>
+
+<section>
+  <h2>Crypto World's Fair · Solami sidetrack</h2>
+  <h1>solana-pulse</h1>
+  <p class="lead">Real-time Solana on-chain monitor. Reads the chain live, turns balance changes into clean SOL &amp; SPL-token flows, and fires alerts to your terminal, a webhook, Telegram, and a live dashboard.</p>
+  <div style="margin-top:26px">
+    <span class="tag">Node 20</span><span class="tag">@solana/web3.js</span><span class="tag">SSE</span><span class="tag">MIT</span><span class="tag">Runs on mainnet</span>
+  </div>
+  <p class="muted" style="margin-top:26px">github.com/Bandidozx/solana-pulse</p>
+</section>
+
+<section>
+  <h2>Problem</h2>
+  <ul>
+    <li>Watching a wallet or program for large moves usually means polling RPC or writing throwaway scripts.</li>
+    <li>Public endpoints rate-limit hard — you can't just stream everything at full rate.</li>
+    <li>Decoding every instruction for every program is fragile and doesn't generalize.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Solution</h2>
+  <p class="lead">A small service you point at any program and get live, readable alerts out of — without decoding a single instruction.</p>
+  <div class="grid">
+    <div class="card"><b>Read flows, not opcodes</b><p class="muted">Computes SOL + SPL deltas from transaction meta, so it works across programs.</p></div>
+    <div class="card"><b>Built for real chains</b><p class="muted">Bounded concurrency, drop-oldest queue, 429 backoff. A slow RPC can't kill it.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>Live demo</h2>
+  <p>The dashboard streaming real mainnet alerts, and the terminal log behind it.</p>
+  <div class="card" style="margin-top:18px">
+    <p><code>npm start</code> → dashboard on <code>localhost:8787</code></p>
+    <p class="muted" style="margin-top:12px">ALERT token_whale | in&nbsp; 7,935,483&nbsp; mint=3sptU…&nbsp; sig=5skxp…<br>
+    ALERT token_whale | out 7,952,946&nbsp; mint=3sptU…&nbsp; sig=5skxp…<br>
+    ALERT token_whale | in&nbsp; 5,675,158&nbsp; mint=5h3p4…&nbsp; sig=23bkv…</p>
+  </div>
+  <p class="muted" style="margin-top:16px">Every alert carries the signature, so you jump straight to the transaction on an explorer.</p>
+</section>
+
+<section>
+  <h2>How it works</h2>
+  <div class="card">
+    <p style="font-family:ui-monospace,monospace;font-size:15px;white-space:pre-wrap">onLogs(program) ─▶ bounded queue ─▶ getParsedTransaction
+                        │                    │
+                  backpressure       parseTransaction  (balance deltas)
+                        │                    │
+                        └──▶ evaluate (rules) ─▶ Deduper
+                                             │
+                    stdout / webhook / telegram ──▶ SSE ──▶ dashboard</p>
+  </div>
+</section>
+
+<section>
+  <h2>What ships today</h2>
+  <ul>
+    <li>Program log subscription + bounded-concurrency fetch queue</li>
+    <li>SOL &amp; SPL balance-delta parsing, whale thresholds, per-mint filters</li>
+    <li>Dedupe window, 429 cooldown, health endpoints</li>
+    <li>Delivery: stdout, JSON webhook, Telegram</li>
+    <li>Live SSE dashboard</li>
+    <li>Tests: <code>npm test</code> — 6/6 passing</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Why Solami</h2>
+  <p class="lead">The whole design is built for exactly what Solami sells: private RPC, the gRPC firehose, webhooks, and fast landing.</p>
+  <ul>
+    <li>On a public endpoint it <span class="kw">samples</span> to survive the rate limit.</li>
+    <li>Point <code>SOLANA_RPC_URL</code> / <code>SOLANA_WS_URL</code> at Solami and it runs the full, un-sampled stream.</li>
+    <li>Next: consume the Yellowstone gRPC firehose directly for full throughput.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Roadmap</h2>
+  <ul>
+    <li>gRPC (Yellowstone) ingestion instead of <code>onLogs</code></li>
+    <li>Address-level watchlists (alert on a specific wallet, not just magnitude)</li>
+    <li>Rule editor + persistence in the dashboard</li>
+    <li>Historical backfill and daily flow summaries</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Links</h2>
+  <ul>
+    <li>Repo: <code>https://github.com/Bandidozx/solana-pulse</code></li>
+    <li>Run: <code>npm install &amp;&amp; npm start</code></li>
+    <li>License: MIT</li>
+  </ul>
+</section>
+
+</body>
+</html>
