@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>solana-pulse — live on-chain alerts</title>
+<style>
+  :root { --bg:#0b0e14; --panel:#131824; --line:#232a3a; --fg:#e6ebf5; --muted:#8892a6; --hi:#ffcf5c; --in:#4ade80; --out:#f87171; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  header { padding:16px 20px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:14px; }
+  h1 { font-size:16px; margin:0; letter-spacing:.5px; }
+  .muted { color:var(--muted); }
+  .wrap { display:grid; grid-template-columns: 260px 1fr; gap:0; height:calc(100vh - 57px); }
+  aside { border-right:1px solid var(--line); padding:16px; }
+  .stat { margin-bottom:14px; }
+  .stat b { display:block; font-size:22px; }
+  main { overflow:auto; padding:12px 16px; }
+  .alert { border:1px solid var(--line); background:var(--panel); border-radius:8px; padding:10px 12px; margin-bottom:8px; }
+  .alert .amt { font-size:15px; }
+  .alert.high .amt { color:var(--hi); }
+  .in { color:var(--in); } .out { color:var(--out); }
+  .row { display:flex; justify-content:space-between; gap:12px; }
+  code { color:var(--muted); word-break:break-all; }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#f87171; }
+  .dot.on { background:#4ade80; }
+</style>
+</head>
+<body>
+<header>
+  <h1>solana-pulse</h1>
+  <span class="muted" id="status"><span class="dot" id="dot"></span> connecting…</span>
+</header>
+<div class="wrap">
+  <aside>
+    <div class="stat"><span class="muted">alerts</span><b id="s-alerts">0</b></div>
+    <div class="stat"><span class="muted">txs scanned</span><b id="s-txs">0</b></div>
+    <div class="stat"><span class="muted">errors</span><b id="s-err">0</b></div>
+    <div class="stat"><span class="muted">uptime</span><b id="s-up">0s</b></div>
+    <p class="muted" style="margin-top:24px">Live feed of Solana on-chain activity filtered by the rules configured in the env.</p>
+  </aside>
+  <main id="feed"></main>
+</div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  let alerts = 0, txs = 0, errs = 0, startedAt = Date.now();
+
+  function fmt(n) { return n < 1000 ? String(n) : n.toLocaleString(); }
+  function uptime() {
+    const s = Math.floor((Date.now() - startedAt) / 1000);
+    $('s-up').textContent = s < 60 ? s + 's' : Math.floor(s/60) + 'm ' + (s%60) + 's';
+  }
+  setInterval(uptime, 1000);
+
+  function render(a) {
+    const el = document.createElement('div');
+    el.className = 'alert ' + (a.severity || 'info');
+    const dir = a.direction === 'in' ? 'in' : 'out';
+    el.innerHTML =
+      '<div class="row"><span class="amt">' + a.amount + ' <span class="muted">' + (a.mint || 'SOL') + '</span></span>' +
+      '<span class="' + dir + '">' + a.direction + '</span></div>' +
+      '<div class="row muted"><span>' + a.kind + (a.account ? ' · ' + String(a.account).slice(0,10) + '…' : '') + '</span>' +
+      '<span>' + new Date(a.ts).toLocaleTimeString() + '</span></div>' +
+      '<code>https://solscan.io/tx/' + a.signature + '</code>';
+    const feed = $('feed');
+    feed.prepend(el);
+    while (feed.children.length > 200) feed.lastChild.remove();
+  }
+
+  const es = new EventSource('/events');
+  es.addEventListener('hello', (e) => {
+    const d = JSON.parse(e.data).stats || {};
+    txs = d.txs || 0; alerts = d.alerts || 0; errs = d.errors || 0;
+    if (d.startedAt) startedAt = d.startedAt;
+    $('s-txs').textContent = fmt(txs); $('s-alerts').textContent = fmt(alerts); $('s-err').textContent = fmt(errs);
+    $('dot').classList.add('on'); $('status').lastChild.textContent = ' live';
+  });
+  es.addEventListener('alert', (e) => {
+    const a = JSON.parse(e.data);
+    alerts++; $('s-alerts').textContent = fmt(alerts);
+    render(a);
+  });
+  es.onerror = () => { $('dot').classList.remove('on'); $('status').lastChild.textContent = ' reconnecting…'; };
+</script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "solana-pulse",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test test/solana-pulse.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.98.2"
+  },
+  "devDependencies": {
+    "@solana/spl-token": "^0.4.9"
+  }
+}
