@@ -1,7 +1,9 @@
-# Superteam submission — Solami track (paste-ready)
+# Superteam submission — Solami track (SENT)
 
 Listing: https://superteam.fun/earn/listing/build-something-live-on-solana-data
 Repo: https://github.com/Bandidozx/solana-pulse
+Pitch deck: https://bandidozx.github.io/solana-pulse/
+Status: SUBMITTED 2026-10-04 (button now shows "Edit Submission")
 Track requirement: open-source app that runs on Solana in real time.
 
 ---
